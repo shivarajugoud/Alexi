@@ -17,7 +17,7 @@ build_direct() {
   echo "Compiling Alexi directly with swiftc."
   direct_build="$project_root/.build/direct/Alexi"
   mkdir -p "$(dirname "$direct_build")"
-  swiftc Sources/Alexi/*.swift -o "$direct_build" \
+  swiftc -module-cache-path "$CLANG_MODULE_CACHE_PATH" Sources/Alexi/*.swift -o "$direct_build" \
     -framework SwiftUI \
     -framework UniformTypeIdentifiers \
     -framework AVFoundation \

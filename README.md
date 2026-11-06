@@ -15,6 +15,7 @@ Alexi is a local-first personal voice assistant and workspace agent for macOS. I
 - Opt-in local morning and evening reminders
 - Memory review/edit/delete controls and timed DSA focus sessions
 - A custom workspace-agent loop: inspect a selected folder, search and summarize local context, generate a reviewable patch plan, and require human review before a draft can be applied
+- An optional local LangGraph sidecar backed by LangChain's Ollama connector, with bounded context and a hard plan-only/human-review gate
 - An auditable local-first mode that records model destinations and makes hosted-versus-local execution explicit
 - Clear separation between conversation, memory, planning, and device actions
 
@@ -28,6 +29,16 @@ Voice input, system integrations, and proactive automation will be introduced on
 The launcher uses Swift Package Manager when it is available and falls back to a direct `swiftc` build when the local Command Line Tools have a SwiftPM manifest mismatch.
 
 Open **Model settings** and select **Discover local models** to choose from the models already installed in Ollama. In local mode, Alexi uses the selected endpoint and model directly; it never silently falls back to a paid hosted provider.
+
+### Optional LangGraph orchestration
+
+Alexi's built-in safe loop is the default. If you want the patch-plan steps to be explicit and inspectable as a graph, install the optional local sidecar:
+
+1. `Scripts/setup-langgraph-sidecar.sh`
+2. In a separate terminal: `Scripts/run-langgraph-sidecar.sh`
+3. In **Model & orchestration settings**, choose **LangGraph local sidecar** and use **Check local sidecar**.
+
+The sidecar binds only to `127.0.0.1`, calls the selected local Ollama model through LangChain, accepts only bounded text supplied by Alexi, and returns a plan. It has no filesystem tool, no shell tool, no cloud fallback, and no route that can apply a patch.
 
 Without Ollama, Alexi remains usable for storing and managing local memory, and reports that the local model service is unavailable.
 

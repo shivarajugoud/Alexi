@@ -160,6 +160,20 @@ enum ModelRouter {
         workspaceContext: String,
         settings: ModelSettingsSnapshot
     ) async throws -> String {
+        if settings.orchestrationBackend == .langGraphLocal {
+            guard settings.backend == .localOllama else {
+                throw LangGraphClientError.remoteModelsUnsupported
+            }
+            return try await LangGraphClient.draftPatch(
+                endpoint: settings.langGraphEndpoint,
+                instruction: instruction,
+                selectedFilePath: selectedFilePath,
+                selectedFileContents: selectedFileContents,
+                workspaceContext: workspaceContext,
+                model: settings.localModel
+            )
+        }
+
         switch settings.backend {
         case .localOllama:
             return try await localClient(settings: settings).draftPatch(

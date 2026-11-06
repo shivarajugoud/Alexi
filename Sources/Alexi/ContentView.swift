@@ -119,7 +119,18 @@ struct ContentView: View {
                             Button("Reload") { workspaceStore.reloadFiles() }
                         }
                         .buttonStyle(.bordered)
-                        Button("Model settings") { showingModelSettings = true }
+                    }
+                }
+
+                GroupBox("Private runtime") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(modelSettings.runtimeSummary, systemImage: modelSettings.backend == .localOllama ? "lock.shield.fill" : "network")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(modelSettings.backend == .localOllama ? .green : .orange)
+                        Text("Model: \(modelSettings.activeModelName)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Model & orchestration settings") { showingModelSettings = true }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -187,15 +198,18 @@ struct ContentView: View {
                     Button("Activity & access") { showingActivity = true }
                 }
 
-                GroupBox("Patch Draft") {
+                GroupBox("Safe change plan") {
                     VStack(alignment: .leading, spacing: 8) {
+                        Text("1. Select a text file  2. Describe the change  3. Review the plan  4. Edit and apply")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         TextField("What should change?", text: $patchInstruction, axis: .vertical)
                             .lineLimit(2...4)
-                        Button("Propose patch") {
+                        Button("Create a local proposal") {
                             workspaceStore.proposePatch(instruction: patchInstruction)
                         }
                         .buttonStyle(.borderedProminent)
-                        Button("Generate safe patch plan") {
+                        Button("Generate reviewable plan") {
                             generatePatchDraft()
                         }
                         .buttonStyle(.bordered)
@@ -215,6 +229,9 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                         Text(generatedPatchStatus)
                             .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(modelSettings.orchestrationSummary)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                         HStack {
                             Button("Apply reviewed draft") {
@@ -249,9 +266,9 @@ struct ContentView: View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Workspace Assistant")
+                    Text("Alexi — Private Workspace Agent")
                         .font(.title2.weight(.semibold))
-                    Text(workspacePrompt)
+                    Text("Ask locally, inspect safely, and approve every change.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Text(modelSettings.runtimeSummary)
@@ -512,6 +529,7 @@ struct ContentView: View {
         }
 
         generatedPatchStatus = "Generating a reviewable patch plan..."
+        activityStore.record(category: "Orchestration", action: "Requested patch plan", destination: modelSettings.patchPlanDestination)
         Task {
             do {
                 let plan = try await ModelRouter.draftPatch(
@@ -581,6 +599,29 @@ private struct ModelSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Section("Patch-plan orchestration") {
+                    Picker("Planner", selection: $modelSettings.orchestrationBackend) {
+                        ForEach(OrchestrationBackend.allCases) { backend in
+                            Text(backend.rawValue).tag(backend)
+                        }
+                    }
+                    Text("Both planners are plan-only. Alexi does not apply or execute model-generated changes automatically.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if modelSettings.orchestrationBackend == .langGraphLocal {
+                        TextField("LangGraph endpoint", text: $modelSettings.langGraphEndpoint)
+                        Button(modelSettings.isCheckingLangGraph ? "Checking sidecar…" : "Check local sidecar") {
+                            Task { await modelSettings.checkLangGraph() }
+                        }
+                        .disabled(modelSettings.isCheckingLangGraph)
+                        Text("LangGraph runs only on localhost and calls your local Ollama model. It cannot write workspace files.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(modelSettings.langGraphStatus)
+                            .font(.caption)
+                            .foregroundStyle(modelSettings.langGraphStatus.hasPrefix("Ready") ? .green : .secondary)
+                    }
+                }
                 Section("Remote") {
                     TextField("Endpoint", text: $modelSettings.remoteEndpoint)
                     TextField("Model", text: $modelSettings.remoteModel)
@@ -603,7 +644,7 @@ private struct ModelSettingsView: View {
                 }
             }
         }
-        .frame(width: 560, height: 420)
+        .frame(width: 600, height: 560)
     }
 }
 

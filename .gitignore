@@ -1,5 +1,8 @@
 .DS_Store
 .build/
+.venv-langgraph/
+__pycache__/
+*.egg-info/
 .serena/
 output/
 *.xcuserstate

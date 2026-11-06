@@ -9,6 +9,13 @@ enum ModelBackend: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
 }
 
+enum OrchestrationBackend: String, CaseIterable, Identifiable, Codable {
+    case nativeSafeLoop = "Built-in safe loop"
+    case langGraphLocal = "LangGraph local sidecar"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 @Observable
 final class ModelSettingsStore {
@@ -36,9 +43,19 @@ final class ModelSettingsStore {
         didSet { saveAPIKey() }
     }
 
+    var orchestrationBackend: OrchestrationBackend = .nativeSafeLoop {
+        didSet { save() }
+    }
+
+    var langGraphEndpoint: String = "http://127.0.0.1:8787" {
+        didSet { save() }
+    }
+
     var statusMessage: String = "Using local Ollama by default"
     var installedLocalModels: [OllamaModel] = []
     var isDiscoveringLocalModels = false
+    var langGraphStatus: String = "Not checked"
+    var isCheckingLangGraph = false
 
     private let fileURL: URL
     private let keychainAccount = "model-api-key"
@@ -75,6 +92,21 @@ final class ModelSettingsStore {
         backend == .localOllama ? "Ollama on \(localEndpoint)" : remoteEndpoint
     }
 
+    var orchestrationSummary: String {
+        switch orchestrationBackend {
+        case .nativeSafeLoop:
+            "Built-in safe loop • every plan needs your review"
+        case .langGraphLocal:
+            "LangGraph local sidecar • plan-only • every change needs your review"
+        }
+    }
+
+    var patchPlanDestination: String {
+        orchestrationBackend == .langGraphLocal
+            ? "LangGraph on \(langGraphEndpoint)"
+            : requestDestination
+    }
+
     var snapshot: ModelSettingsSnapshot {
         ModelSettingsSnapshot(
             backend: backend,
@@ -82,7 +114,9 @@ final class ModelSettingsStore {
             localModel: localModel,
             remoteEndpoint: remoteEndpoint,
             remoteModel: remoteModel,
-            apiKey: apiKey
+            apiKey: apiKey,
+            orchestrationBackend: orchestrationBackend,
+            langGraphEndpoint: langGraphEndpoint
         )
     }
 
@@ -105,6 +139,17 @@ final class ModelSettingsStore {
         }
     }
 
+    func checkLangGraph() async {
+        isCheckingLangGraph = true
+        defer { isCheckingLangGraph = false }
+
+        do {
+            langGraphStatus = try await LangGraphClient.health(endpoint: langGraphEndpoint)
+        } catch {
+            langGraphStatus = error.localizedDescription
+        }
+    }
+
     private func load() {
         guard let data = try? Data(contentsOf: fileURL),
               let saved = try? JSONDecoder().decode(SavedSettings.self, from: data) else {
@@ -116,6 +161,8 @@ final class ModelSettingsStore {
         localModel = saved.localModel
         remoteEndpoint = saved.remoteEndpoint
         remoteModel = saved.remoteModel
+        orchestrationBackend = saved.orchestrationBackend ?? .nativeSafeLoop
+        langGraphEndpoint = saved.langGraphEndpoint ?? "http://127.0.0.1:8787"
         apiKey = loadAPIKey() ?? ""
     }
 
@@ -125,7 +172,9 @@ final class ModelSettingsStore {
             localEndpoint: localEndpoint,
             localModel: localModel,
             remoteEndpoint: remoteEndpoint,
-            remoteModel: remoteModel
+            remoteModel: remoteModel,
+            orchestrationBackend: orchestrationBackend,
+            langGraphEndpoint: langGraphEndpoint
         )
         try? JSONEncoder().encode(saved).write(to: fileURL, options: [.atomic])
     }
@@ -168,6 +217,8 @@ private struct SavedSettings: Codable {
     let localModel: String
     let remoteEndpoint: String
     let remoteModel: String
+    let orchestrationBackend: OrchestrationBackend?
+    let langGraphEndpoint: String?
 }
 
 struct ModelSettingsSnapshot {
@@ -177,4 +228,6 @@ struct ModelSettingsSnapshot {
     let remoteEndpoint: String
     let remoteModel: String
     let apiKey: String
+    let orchestrationBackend: OrchestrationBackend
+    let langGraphEndpoint: String
 }
