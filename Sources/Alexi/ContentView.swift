@@ -1,6 +1,101 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private enum TemporalPalette {
+    static let ink = Color(red: 0.12, green: 0.10, blue: 0.08)
+    static let mutedInk = Color(red: 0.31, green: 0.25, blue: 0.18)
+    static let parchment = Color(red: 0.96, green: 0.91, blue: 0.78)
+    static let paper = Color(red: 1.0, green: 0.97, blue: 0.87)
+    static let amber = Color(red: 0.84, green: 0.45, blue: 0.08)
+    static let gold = Color(red: 0.98, green: 0.72, blue: 0.19)
+    static let rust = Color(red: 0.54, green: 0.20, blue: 0.08)
+    static let green = Color(red: 0.16, green: 0.38, blue: 0.25)
+}
+
+private struct TemporalGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            configuration.label
+                .font(.system(.caption, design: .monospaced).weight(.bold))
+                .tracking(1.2)
+                .foregroundStyle(TemporalPalette.rust)
+            configuration.content
+        }
+        .padding(14)
+        .background(TemporalPalette.paper.opacity(0.86), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(TemporalPalette.rust.opacity(0.24), lineWidth: 1)
+        }
+        .shadow(color: TemporalPalette.ink.opacity(0.08), radius: 10, y: 4)
+    }
+}
+
+private struct ClockworkSeal: View {
+    var compact = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(TemporalPalette.gold.opacity(0.9), lineWidth: compact ? 3 : 5)
+            Circle()
+                .stroke(TemporalPalette.rust.opacity(0.8), lineWidth: 1)
+                .padding(compact ? 7 : 12)
+            ForEach(0..<12, id: \.self) { tick in
+                Capsule()
+                    .fill(TemporalPalette.gold)
+                    .frame(width: compact ? 2 : 3, height: compact ? 7 : 11)
+                    .offset(y: compact ? -15 : -25)
+                    .rotationEffect(.degrees(Double(tick) * 30))
+            }
+            Image(systemName: "clock.arrow.2.circlepath")
+                .font(.system(size: compact ? 16 : 30, weight: .semibold))
+                .foregroundStyle(TemporalPalette.gold)
+        }
+        .frame(width: compact ? 42 : 72, height: compact ? 42 : 72)
+        .background(TemporalPalette.ink, in: Circle())
+        .overlay(Circle().stroke(TemporalPalette.gold.opacity(0.65), lineWidth: 1))
+    }
+}
+
+private struct TemporalMasthead: View {
+    let modelName: String
+    let runtimeSummary: String
+    let isLocal: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ClockworkSeal(compact: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ALEXI")
+                    .font(.system(.title3, design: .rounded).weight(.heavy))
+                    .tracking(3)
+                Text("CHRONOLOGICAL OPERATIONS DESK")
+                    .font(.system(.caption2, design: .monospaced).weight(.bold))
+                    .tracking(1)
+                    .foregroundStyle(TemporalPalette.mutedInk)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Label(isLocal ? "LOCAL TIME AUTHORITY" : "EXTERNAL RELAY", systemImage: isLocal ? "lock.fill" : "network")
+                    .font(.system(.caption2, design: .monospaced).weight(.bold))
+                    .foregroundStyle(isLocal ? TemporalPalette.green : TemporalPalette.rust)
+                Text("\(modelName)  •  \(runtimeSummary)")
+                    .font(.caption2)
+                    .foregroundStyle(TemporalPalette.mutedInk)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .background(TemporalPalette.parchment.opacity(0.96))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(LinearGradient(colors: [TemporalPalette.rust, TemporalPalette.gold, TemporalPalette.rust], startPoint: .leading, endPoint: .trailing))
+                .frame(height: 2)
+        }
+    }
+}
+
 struct ContentView: View {
     @Environment(MemoryStore.self) private var memoryStore
     @Environment(ActivityStore.self) private var activityStore
@@ -37,16 +132,41 @@ struct ContentView: View {
     @State private var routines = RoutineService()
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-                .frame(minWidth: 280, idealWidth: 320, maxWidth: 380)
-            Divider()
-            centerPanel
-            Divider()
-            inspectorPanel
-                .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
+        ZStack {
+            LinearGradient(
+                colors: [TemporalPalette.parchment, Color(red: 0.90, green: 0.80, blue: 0.57), TemporalPalette.parchment],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                TemporalMasthead(
+                    modelName: modelSettings.activeModelName,
+                    runtimeSummary: modelSettings.runtimeSummary,
+                    isLocal: modelSettings.backend == .localOllama
+                )
+                HStack(spacing: 0) {
+                    sidebar
+                        .frame(minWidth: 288, idealWidth: 320, maxWidth: 370)
+                        .background(TemporalPalette.parchment.opacity(0.72))
+                    Rectangle()
+                        .fill(TemporalPalette.rust.opacity(0.22))
+                        .frame(width: 1)
+                    centerPanel
+                    Rectangle()
+                        .fill(TemporalPalette.rust.opacity(0.22))
+                        .frame(width: 1)
+                    inspectorPanel
+                        .frame(minWidth: 272, idealWidth: 310, maxWidth: 370)
+                        .background(TemporalPalette.parchment.opacity(0.72))
+                }
+            }
         }
         .frame(minWidth: 1200, minHeight: 720)
+        .tint(TemporalPalette.amber)
+        .foregroundStyle(TemporalPalette.ink)
+        .groupBoxStyle(TemporalGroupBoxStyle())
         .onChange(of: voiceService.transcript) { _, transcript in
             draft = transcript
         }
@@ -109,41 +229,41 @@ struct ContentView: View {
     private var sidebar: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                GroupBox("Workspace") {
+                GroupBox("Case file") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(workspaceStore.rootURL?.path ?? "No workspace selected")
+                        Text(workspaceStore.rootURL?.path ?? "No case file selected")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         HStack {
-                            Button("Choose folder") { showingWorkspacePicker = true }
-                            Button("Reload") { workspaceStore.reloadFiles() }
+                            Button("Open case file", systemImage: "folder.badge.gearshape") { showingWorkspacePicker = true }
+                            Button("Refresh", systemImage: "arrow.clockwise") { workspaceStore.reloadFiles() }
                         }
                         .buttonStyle(.bordered)
                     }
                 }
 
-                GroupBox("Private runtime") {
+                GroupBox("Authority status") {
                     VStack(alignment: .leading, spacing: 8) {
                         Label(modelSettings.runtimeSummary, systemImage: modelSettings.backend == .localOllama ? "lock.shield.fill" : "network")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(modelSettings.backend == .localOllama ? .green : .orange)
-                        Text("Model: \(modelSettings.activeModelName)")
+                        Text("ACTIVE ENGINE  //  \(modelSettings.activeModelName)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Button("Model & orchestration settings") { showingModelSettings = true }
+                        Button("Open control room", systemImage: "slider.horizontal.3") { showingModelSettings = true }
                             .buttonStyle(.bordered)
                     }
                 }
 
-                GroupBox("Search") {
+                GroupBox("Archive search") {
                     VStack(alignment: .leading, spacing: 8) {
-                        TextField("Search workspace", text: $workspaceSearchQuery)
+                        TextField("Search the case file", text: $workspaceSearchQuery)
                         HStack {
-                            Button("Search") {
+                            Button("Search archive", systemImage: "magnifyingglass") {
                                 workspaceStore.searchWorkspace(query: workspaceSearchQuery)
                                 workspaceStore.addAction("Search query", detail: workspaceSearchQuery)
                             }
-                            Button("Summarize") {
+                            Button("Brief me", systemImage: "text.badge.checkmark") {
                                 let summary = workspaceStore.summarizeWorkspace()
                                 messages.append(ChatMessage(role: .assistant, content: summary))
                             }
@@ -152,7 +272,7 @@ struct ContentView: View {
                     }
                 }
 
-                GroupBox("Files") {
+                GroupBox("Evidence index") {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(workspaceStore.files.prefix(18)) { file in
                             Button {
@@ -170,50 +290,50 @@ struct ContentView: View {
                     }
                 }
 
-                GroupBox("Private Memory") {
+                GroupBox("Private record") {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(memoryStore.memories.prefix(4)) { memory in
                             Text(memory.content)
                                 .lineLimit(2)
                         }
-                        Button("Review all memory") { showingMemoryReview = true }
+                        Button("Review record", systemImage: "lock.doc") { showingMemoryReview = true }
                     }
                 }
 
-                GroupBox("Companion") {
+                GroupBox("Field protocols") {
                     VStack(alignment: .leading, spacing: 8) {
                         Picker("Mode", selection: $companion.selectedMode) {
                             ForEach(CompanionMode.allCases) { mode in
                                 Text(mode.rawValue).tag(mode)
                             }
                         }
-                        Button("Daily check-in") { showingCheckIn = true }
-                        Button("DSA plan") { showingDSAPlan = true }
-                        Button("DSA focus session") { showingPracticeWorkspace = true }
-                        Button("Daily routines") { showingRoutines = true }
+                        Button("Daily check-in", systemImage: "checkmark.circle") { showingCheckIn = true }
+                        Button("DSA briefing", systemImage: "brain.head.profile") { showingDSAPlan = true }
+                        Button("Focus session", systemImage: "timer") { showingPracticeWorkspace = true }
+                        Button("Daily routines", systemImage: "bell.badge") { showingRoutines = true }
                     }
                 }
 
-                GroupBox("Security") {
-                    Button("Activity & access") { showingActivity = true }
+                GroupBox("Audit trail") {
+                    Button("Review activity & access", systemImage: "checklist") { showingActivity = true }
                 }
 
-                GroupBox("Safe change plan") {
+                GroupBox("Variance proposal") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("1. Select a text file  2. Describe the change  3. Review the plan  4. Edit and apply")
+                        Text("01  SELECT EVIDENCE   02  DESCRIBE VARIANCE   03  REVIEW PLAN   04  APPLY MANUALLY")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("What should change?", text: $patchInstruction, axis: .vertical)
+                        TextField("Describe the variance to investigate…", text: $patchInstruction, axis: .vertical)
                             .lineLimit(2...4)
-                        Button("Create a local proposal") {
+                        Button("Log a local proposal", systemImage: "note.text.badge.plus") {
                             workspaceStore.proposePatch(instruction: patchInstruction)
                         }
                         .buttonStyle(.borderedProminent)
-                        Button("Generate reviewable plan") {
+                        Button("Generate reviewable plan", systemImage: "sparkles") {
                             generatePatchDraft()
                         }
                         .buttonStyle(.bordered)
-                        Button("Load selected file into draft") {
+                        Button("Load evidence into draft", systemImage: "doc.text") {
                             workspaceStore.loadSelectedFileDraft()
                         }
                         .buttonStyle(.bordered)
@@ -234,11 +354,11 @@ struct ContentView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         HStack {
-                            Button("Apply reviewed draft") {
+                            Button("Apply reviewed draft", systemImage: "checkmark.seal.fill") {
                                 _ = workspaceStore.applySelectedFileDraft()
                             }
                             .buttonStyle(.borderedProminent)
-                            Button("Add task") {
+                            Button("Add to docket", systemImage: "plus") {
                                 workspaceStore.addTask(title: patchInstruction, detail: "Track the change before applying it")
                             }
                             .buttonStyle(.bordered)
@@ -264,69 +384,117 @@ struct ContentView: View {
 
     private var centerPanel: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Alexi — Private Workspace Agent")
-                        .font(.title2.weight(.semibold))
-                    Text("Ask locally, inspect safely, and approve every change.")
+            HStack(alignment: .center, spacing: 14) {
+                ClockworkSeal()
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("OPERATIONS CONSOLE")
+                        .font(.system(.caption, design: .monospaced).weight(.bold))
+                        .tracking(1.6)
+                        .foregroundStyle(TemporalPalette.rust)
+                    Text(workspaceStore.rootURL?.lastPathComponent ?? "Awaiting a case file")
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                    Text("Local analysis. Clear audit trail. Your approval controls every change.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text(modelSettings.runtimeSummary)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(modelSettings.backend == .localOllama ? .green : .orange)
+                        .foregroundStyle(TemporalPalette.mutedInk)
                 }
                 Spacer()
-                Text(voiceService.voiceStatus)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .trailing, spacing: 6) {
+                    Label(isResponding ? "ANALYSING" : "TIME STREAM STABLE", systemImage: isResponding ? "hourglass" : "checkmark.seal.fill")
+                        .font(.system(.caption, design: .monospaced).weight(.bold))
+                        .foregroundStyle(isResponding ? TemporalPalette.rust : TemporalPalette.green)
+                    Text(voiceService.voiceStatus)
+                        .font(.caption2)
+                        .foregroundStyle(TemporalPalette.mutedInk)
+                }
             }
-            .padding()
+            .padding(.horizontal, 24)
+            .padding(.vertical, 18)
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
+                    if messages.count == 1 {
+                        temporalWelcome
+                    }
                     ForEach(messages) { message in
                         MessageBubble(message: message)
                     }
                     if isResponding {
-                        ProgressView("Alexi is thinking…")
+                        ProgressView("Alexi is tracing the timeline…")
+                            .tint(TemporalPalette.amber)
                     }
                 }
-                .padding()
+                .padding(24)
             }
 
-            Divider()
+            Rectangle()
+                .fill(TemporalPalette.rust.opacity(0.22))
+                .frame(height: 1)
             VStack(alignment: .leading, spacing: 8) {
-                TextField("Ask Alexi about this workspace", text: $draft, axis: .vertical)
+                Text("NEW TRANSMISSION")
+                    .font(.system(.caption2, design: .monospaced).weight(.bold))
+                    .tracking(1.2)
+                    .foregroundStyle(TemporalPalette.rust)
+                TextField("Ask Alexi to inspect, explain, or plan…", text: $draft, axis: .vertical)
                     .lineLimit(2...5)
+                    .padding(10)
+                    .background(TemporalPalette.paper.opacity(0.84), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(TemporalPalette.rust.opacity(0.28), lineWidth: 1)
+                    }
                 HStack(alignment: .bottom) {
                     Button(action: toggleListening) {
-                        Label(voiceService.isVoiceModeEnabled ? "End voice mode" : "Voice mode", systemImage: voiceService.isVoiceModeEnabled ? "stop.circle.fill" : "mic.circle.fill")
-                            .font(.title2)
+                        Label(voiceService.isVoiceModeEnabled ? "Close channel" : "Open voice channel", systemImage: voiceService.isVoiceModeEnabled ? "stop.circle.fill" : "mic.circle.fill")
                     }
+                    .buttonStyle(.bordered)
                     .help(voiceService.isVoiceModeEnabled ? "End continuous voice mode" : "Start continuous voice mode")
                     if voiceService.isSpeaking {
                         Button(action: voiceService.interruptAndListen) {
                             Label("Interrupt & speak", systemImage: "waveform.circle.fill")
-                                .font(.title2)
                         }
+                        .buttonStyle(.bordered)
                         .help("Stop Alexi and start listening")
                     }
                     Button(action: send) {
-                        Label("Send", systemImage: "arrow.up.circle.fill")
-                            .font(.title2)
+                        Label("Transmit", systemImage: "paperplane.fill")
                     }
+                    .buttonStyle(.borderedProminent)
                     .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResponding)
                     Spacer()
                 }
             }
-            .padding()
+            .padding(18)
+            .background(TemporalPalette.parchment.opacity(0.84))
+        }
+    }
+
+    private var temporalWelcome: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "clock.badge.checkmark")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(TemporalPalette.gold)
+                .frame(width: 50, height: 50)
+                .background(TemporalPalette.ink, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Your timeline is clear.")
+                    .font(.headline)
+                Text("Open a case file or send a request. Alexi will keep the investigation local and make every proposed change reviewable.")
+                    .font(.caption)
+                    .foregroundStyle(TemporalPalette.mutedInk)
+            }
+        }
+        .padding(14)
+        .background(TemporalPalette.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(TemporalPalette.amber.opacity(0.4), lineWidth: 1)
         }
     }
 
     private var inspectorPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                GroupBox("Selected Context") {
+                GroupBox("Selected evidence") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(workspaceStore.selectedFileSummary)
                             .font(.footnote)
@@ -336,7 +504,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
                         if !workspaceStore.searchResults.isEmpty {
-                            Text("Search results")
+                            Text("Archive matches")
                                 .font(.headline)
                             ForEach(workspaceStore.searchResults.prefix(8)) { result in
                                 VStack(alignment: .leading, spacing: 2) {
@@ -357,7 +525,7 @@ struct ContentView: View {
                     }
                 }
 
-                GroupBox("Action Log") {
+                GroupBox("Timeline record") {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(workspaceStore.actions.prefix(10)) { action in
                             VStack(alignment: .leading, spacing: 2) {
@@ -371,7 +539,7 @@ struct ContentView: View {
                     }
                 }
 
-                GroupBox("Tool Calls") {
+                GroupBox("Instrument panel") {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(workspaceStore.toolCalls.prefix(10)) { call in
                             VStack(alignment: .leading, spacing: 3) {
@@ -379,7 +547,7 @@ struct ContentView: View {
                                     Text(call.toolName)
                                         .font(.subheadline.weight(.semibold))
                                     Spacer()
-                                    Text(call.wasSuccessful ? "ok" : "fail")
+                                    Text(call.wasSuccessful ? "CLEARED" : "FLAGGED")
                                         .font(.caption)
                                         .foregroundStyle(call.wasSuccessful ? .green : .red)
                                 }
@@ -397,9 +565,9 @@ struct ContentView: View {
                     }
                 }
 
-                GroupBox("Organizer") {
+                GroupBox("Temporal docket") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Today")
+                        Text("Today’s appointments")
                             .font(.subheadline.weight(.semibold))
                         ForEach(organizer.todaysEvents.prefix(4)) { event in
                             VStack(alignment: .leading) {
@@ -410,10 +578,10 @@ struct ContentView: View {
                             }
                         }
                         if organizer.todaysEvents.isEmpty {
-                            Text("No events today")
+                            Text("No appointments on the docket")
                                 .foregroundStyle(.secondary)
                         }
-                        Text("Reminders")
+                        Text("Open reminders")
                             .font(.subheadline.weight(.semibold))
                         ForEach(organizer.incompleteReminders.prefix(4)) { reminder in
                             Text(reminder.title)
@@ -422,13 +590,13 @@ struct ContentView: View {
                             Text("No open reminders")
                                 .foregroundStyle(.secondary)
                         }
-                        Button("Refresh organizer") {
+                        Button("Refresh docket", systemImage: "arrow.clockwise") {
                             Task { await organizer.refresh() }
                         }
                     }
                 }
 
-                GroupBox("Tasks") {
+                GroupBox("Active directives") {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(workspaceStore.tasks) { task in
                             Button {
@@ -946,12 +1114,32 @@ private struct MessageBubble: View {
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 80) }
-            Text(message.content)
-                .textSelection(.enabled)
-                .padding(12)
-                .background(message.role == .user ? Color.accentColor : Color.gray.opacity(0.16))
-                .foregroundStyle(message.role == .user ? .white : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+            HStack(alignment: .top, spacing: 9) {
+                if message.role == .assistant {
+                    Image(systemName: "clock.arrow.2.circlepath")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(TemporalPalette.gold)
+                        .frame(width: 24, height: 24)
+                        .background(TemporalPalette.ink, in: Circle())
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(message.role == .assistant ? "ALEXI // OFFICIAL RESPONSE" : "YOU // INCOMING TRANSMISSION")
+                        .font(.system(.caption2, design: .monospaced).weight(.bold))
+                        .tracking(0.8)
+                        .foregroundStyle(message.role == .assistant ? TemporalPalette.rust : TemporalPalette.paper.opacity(0.82))
+                    Text(message.content)
+                        .textSelection(.enabled)
+                        .font(.body)
+                }
+            }
+            .padding(14)
+            .background(message.role == .user ? TemporalPalette.ink : TemporalPalette.paper.opacity(0.9))
+            .foregroundStyle(message.role == .user ? TemporalPalette.paper : TemporalPalette.ink)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(message.role == .user ? TemporalPalette.gold.opacity(0.65) : TemporalPalette.rust.opacity(0.26), lineWidth: 1)
+            }
             if message.role == .assistant { Spacer(minLength: 80) }
         }
     }
