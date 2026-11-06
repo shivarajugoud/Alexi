@@ -1,12 +1,13 @@
 # Alexi
 
-Alexi is a local-first personal voice assistant for macOS. The first release keeps personal data on the Mac and sends prompts only to a local model provider.
+Alexi is a local-first personal voice assistant and workspace agent for macOS. It runs open-source models through Ollama on the user's Mac, so local mode has no hosted API charges and keeps prompts on-device. Alexi is an application and agent runtime, not a foundation model; local inference still uses the owner's hardware and electricity.
 
 ## MVP scope
 
 - Conversational desktop interface
 - Persistent, user-editable personal memory stored locally
 - Local LLM connection through Ollama (`http://localhost:11434`)
+- Local model discovery and selection for any installed Ollama-compatible model
 - Push-to-talk speech recognition and spoken replies through macOS
 - Permission-gated access to today's Calendar events and incomplete Reminders
 - Friend, DSA Coach, and Wellbeing conversation modes
@@ -14,6 +15,7 @@ Alexi is a local-first personal voice assistant for macOS. The first release kee
 - Opt-in local morning and evening reminders
 - Memory review/edit/delete controls and timed DSA focus sessions
 - A custom workspace-agent loop: inspect a selected folder, search and summarize local context, generate a reviewable patch plan, and require human review before a draft can be applied
+- An auditable local-first mode that records model destinations and makes hosted-versus-local execution explicit
 - Clear separation between conversation, memory, planning, and device actions
 
 Voice input, system integrations, and proactive automation will be introduced only after the assistant is useful and its permission model is in place.
@@ -24,6 +26,8 @@ Voice input, system integrations, and proactive automation will be introduced on
 2. From this directory, run: `./Scripts/launch-app.sh`
 
 The launcher uses Swift Package Manager when it is available and falls back to a direct `swiftc` build when the local Command Line Tools have a SwiftPM manifest mismatch.
+
+Open **Model settings** and select **Discover local models** to choose from the models already installed in Ollama. In local mode, Alexi uses the selected endpoint and model directly; it never silently falls back to a paid hosted provider.
 
 Without Ollama, Alexi remains usable for storing and managing local memory, and reports that the local model service is unavailable.
 

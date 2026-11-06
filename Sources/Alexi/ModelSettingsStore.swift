@@ -37,6 +37,8 @@ final class ModelSettingsStore {
     }
 
     var statusMessage: String = "Using local Ollama by default"
+    var installedLocalModels: [OllamaModel] = []
+    var isDiscoveringLocalModels = false
 
     private let fileURL: URL
     private let keychainAccount = "model-api-key"
@@ -60,6 +62,19 @@ final class ModelSettingsStore {
         URL(string: backend == .localOllama ? localEndpoint : remoteEndpoint)
     }
 
+    var runtimeSummary: String {
+        switch backend {
+        case .localOllama:
+            "Local-only inference • no hosted API charges"
+        case .remoteOpenAICompatible:
+            "Remote inference • provider charges may apply"
+        }
+    }
+
+    var requestDestination: String {
+        backend == .localOllama ? "Ollama on \(localEndpoint)" : remoteEndpoint
+    }
+
     var snapshot: ModelSettingsSnapshot {
         ModelSettingsSnapshot(
             backend: backend,
@@ -69,6 +84,25 @@ final class ModelSettingsStore {
             remoteModel: remoteModel,
             apiKey: apiKey
         )
+    }
+
+    func discoverLocalModels() async {
+        isDiscoveringLocalModels = true
+        defer { isDiscoveringLocalModels = false }
+
+        do {
+            let models = try await OllamaService.installedModels(endpoint: localEndpoint)
+            installedLocalModels = models
+            if let firstModel = models.first, !models.contains(where: { $0.name == localModel }) {
+                localModel = firstModel.name
+            }
+            statusMessage = models.isEmpty
+                ? "Ollama is running, but no local models are installed."
+                : "Found \(models.count) local model\(models.count == 1 ? "" : "s")."
+        } catch {
+            installedLocalModels = []
+            statusMessage = error.localizedDescription
+        }
     }
 
     private func load() {

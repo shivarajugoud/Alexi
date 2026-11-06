@@ -22,18 +22,21 @@ protocol ModelClient {
 }
 
 struct LocalModelClient: ModelClient {
+    let endpoint: URL
+    let model: String
+
     func reply(
         to prompt: String,
         mode: CompanionMode,
         context: ModelReplyContext
     ) async throws -> String {
         let request = ModelRequest(
-            model: "llama3.2",
+            model: model,
             prompt: prompt,
             mode: mode,
             context: context
         )
-        return try await ModelRouter.sendOllama(request, endpoint: URL(string: "http://localhost:11434/api/generate")!)
+        return try await ModelRouter.sendOllama(request, endpoint: endpoint)
     }
 
     func draftPatch(
@@ -64,12 +67,12 @@ struct LocalModelClient: ModelClient {
         \(workspaceContext)
         """
         let request = ModelRequest(
-            model: "llama3.2",
+            model: model,
             prompt: prompt,
             mode: .friend,
             context: ModelReplyContext(memoryContext: "", companionContext: "", workspaceContext: workspaceContext)
         )
-        return try await ModelRouter.sendOllama(request, endpoint: URL(string: "http://localhost:11434/api/generate")!)
+        return try await ModelRouter.sendOllama(request, endpoint: endpoint)
     }
 }
 
@@ -140,7 +143,7 @@ enum ModelRouter {
     ) async throws -> String {
         switch settings.backend {
         case .localOllama:
-            return try await LocalModelClient().reply(to: prompt, mode: mode, context: context)
+            return try await localClient(settings: settings).reply(to: prompt, mode: mode, context: context)
         case .remoteOpenAICompatible:
             guard let endpoint = URL(string: settings.remoteEndpoint), !settings.apiKey.isEmpty else {
                 throw LocalModelError.unavailable
@@ -159,7 +162,7 @@ enum ModelRouter {
     ) async throws -> String {
         switch settings.backend {
         case .localOllama:
-            return try await LocalModelClient().draftPatch(
+            return try await localClient(settings: settings).draftPatch(
                 instruction: instruction,
                 selectedFilePath: selectedFilePath,
                 selectedFileContents: selectedFileContents,
@@ -177,6 +180,13 @@ enum ModelRouter {
                     workspaceContext: workspaceContext
                 )
         }
+    }
+
+    private static func localClient(settings: ModelSettingsSnapshot) throws -> LocalModelClient {
+        guard let endpoint = URL(string: settings.localEndpoint) else {
+            throw LocalModelError.unavailable
+        }
+        return LocalModelClient(endpoint: endpoint, model: settings.localModel)
     }
 
     static func sendOllama(_ request: ModelRequest, endpoint: URL) async throws -> String {

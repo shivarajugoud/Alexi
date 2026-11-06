@@ -13,8 +13,8 @@ export SWIFTPM_MODULECACHE_PATH="$cache_root/swiftpm"
 export SWIFT_MODULECACHE_PATH="$cache_root/swiftpm"
 
 binary_path="$project_root/.build/arm64-apple-macosx/debug/Alexi"
-if ! swift build -Xswiftc -module-cache-path -Xswiftc "$CLANG_MODULE_CACHE_PATH"; then
-  echo "SwiftPM is unavailable; compiling Alexi directly with swiftc."
+build_direct() {
+  echo "Compiling Alexi directly with swiftc."
   direct_build="$project_root/.build/direct/Alexi"
   mkdir -p "$(dirname "$direct_build")"
   swiftc Sources/Alexi/*.swift -o "$direct_build" \
@@ -27,6 +27,12 @@ if ! swift build -Xswiftc -module-cache-path -Xswiftc "$CLANG_MODULE_CACHE_PATH"
     -framework Security \
     -framework CryptoKit
   binary_path="$direct_build"
+}
+
+if [[ "${ALEXI_BUILD_MODE:-auto}" == "direct" || "$(xcode-select -p)" == "/Library/Developer/CommandLineTools" ]]; then
+  build_direct
+elif ! swift build -Xswiftc -module-cache-path -Xswiftc "$CLANG_MODULE_CACHE_PATH"; then
+  build_direct
 fi
 
 app_path="$project_root/.build/Alexi.app"
@@ -34,4 +40,4 @@ mkdir -p "$app_path/Contents/MacOS"
 cp "$binary_path" "$app_path/Contents/MacOS/Alexi"
 cp "$project_root/App/Info.plist" "$app_path/Contents/Info.plist"
 codesign --force --sign - --entitlements "$project_root/App/Alexi.entitlements" "$app_path"
-open "$app_path"
+open -n "$app_path"

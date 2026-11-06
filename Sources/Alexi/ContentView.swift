@@ -254,6 +254,9 @@ struct ContentView: View {
                     Text(workspacePrompt)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    Text(modelSettings.runtimeSummary)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(modelSettings.backend == .localOllama ? .green : .orange)
                 }
                 Spacer()
                 Text(voiceService.voiceStatus)
@@ -446,7 +449,7 @@ struct ContentView: View {
 
         draft = ""
         messages.append(ChatMessage(role: .user, content: prompt))
-        activityStore.record(category: "Network", action: "Sent a local model request", destination: "Ollama on localhost:11434")
+        activityStore.record(category: "Model", action: "Sent model request", destination: modelSettings.requestDestination)
         workspaceStore.addAction("Asked Alexi", detail: prompt)
         isResponding = true
 
@@ -563,6 +566,20 @@ private struct ModelSettingsView: View {
                 Section("Local Ollama") {
                     TextField("Endpoint", text: $modelSettings.localEndpoint)
                     TextField("Model", text: $modelSettings.localModel)
+                    Button(modelSettings.isDiscoveringLocalModels ? "Discovering local models…" : "Discover local models") {
+                        Task { await modelSettings.discoverLocalModels() }
+                    }
+                    .disabled(modelSettings.isDiscoveringLocalModels)
+                    if !modelSettings.installedLocalModels.isEmpty {
+                        Picker("Installed model", selection: $modelSettings.localModel) {
+                            ForEach(modelSettings.installedLocalModels) { model in
+                                Text(model.name).tag(model.name)
+                            }
+                        }
+                    }
+                    Text("Local-only mode sends prompts to your Ollama server and has no hosted API charges. Your hardware and electricity still power inference.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Section("Remote") {
                     TextField("Endpoint", text: $modelSettings.remoteEndpoint)
@@ -571,6 +588,9 @@ private struct ModelSettingsView: View {
                 }
                 Section("Status") {
                     Text(modelSettings.statusMessage)
+                    Text(modelSettings.runtimeSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Model Settings")
